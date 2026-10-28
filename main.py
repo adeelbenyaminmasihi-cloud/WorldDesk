@@ -44,8 +44,9 @@ def get_gemini_script():
     print("🧠 Contacting Gemini AI for a New Global Event Script...")
     genai.configure(api_key=GEMINI_API_KEY)
     
-    # Using gemini-1.5-flash for fast and reliable JSON generation
-model = genai.GenerativeModel('gemini-1.5-flash-latest')    
+    # 404 error se bachne ke liye standard gemini-pro model use kiya gaya hai
+    model = genai.GenerativeModel('gemini-pro')
+    
     prompt = f"""
     You are an expert YouTube scriptwriter and video producer. 
     Your task is to write a highly engaging, 2-minute video script about a VERY RECENT or ONGOING IMPORTANT GLOBAL EVENT (e.g., Geopolitics, Global Economy, Major Tech News, International Conflicts, Space Discoveries).
@@ -101,7 +102,7 @@ def fetch_contextual_stock_video(query, filename):
         return None
     try:
         encoded = urllib.parse.quote(query.strip())
-        p_url = f"https://pixabay.com/api/videos/?key={PIXABAY_API_KEY}&q={encoded}&safesearch=true&per_page=10"
+        p_url = f"[https://pixabay.com/api/videos/?key=](https://pixabay.com/api/videos/?key=){PIXABAY_API_KEY}&q={encoded}&safesearch=true&per_page=10"
         r = requests.get(p_url, headers=HEADERS, timeout=20)
         if r.status_code == 200:
             for hit in r.json().get("hits", []):
@@ -121,7 +122,7 @@ def fetch_exact_scene_photo(query, filename):
     if PIXABAY_API_KEY:
         try:
             encoded = urllib.parse.quote(query.strip())
-            p_url = f"https://pixabay.com/api/?key={PIXABAY_API_KEY}&q={encoded}&image_type=photo&safesearch=true&per_page=15"
+            p_url = f"[https://pixabay.com/api/?key=](https://pixabay.com/api/?key=){PIXABAY_API_KEY}&q={encoded}&image_type=photo&safesearch=true&per_page=15"
             r = requests.get(p_url, headers=HEADERS, timeout=18)
             if r.status_code == 200:
                 for hit in r.json().get("hits", []):
@@ -255,7 +256,7 @@ def get_youtube_service():
     creds = google.oauth2.credentials.Credentials(
         None,
         refresh_token=YOUTUBE_REFRESH_TOKEN,
-        token_uri="https://oauth2.googleapis.com/token",
+        token_uri="[https://oauth2.googleapis.com/token](https://oauth2.googleapis.com/token)",
         client_id=YOUTUBE_CLIENT_ID,
         client_secret=YOUTUBE_CLIENT_SECRET
     )
@@ -286,13 +287,13 @@ def upload_to_youtube(video_path, data):
         response = request.execute()
         
         vid_id = response.get('id')
-        return True, f"Uploaded! Link: https://youtube.com/watch?v={vid_id}"
+        return True, f"Uploaded! Link: [https://youtube.com/watch?v=](https://youtube.com/watch?v=){vid_id}"
     except Exception as e:
         print(f"YouTube Error: {e}")
         return False, str(e)[:150]
 
 def send_to_telegram(video_path, script_data, yt_ok, yt_msg):
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendVideo"
+    url = f"[https://api.telegram.org/bot](https://api.telegram.org/bot){TELEGRAM_BOT_TOKEN}/sendVideo"
     status = f"✅ YouTube Post: {yt_msg}" if yt_ok else f"⚠️ YouTube Post: {yt_msg}"
     cap = f"🔥 {script_data.get('title')}\n\n{status}"[:1000]
     
