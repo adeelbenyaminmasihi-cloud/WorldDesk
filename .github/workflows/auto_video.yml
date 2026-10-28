@@ -3,7 +3,7 @@ name: Video Employee Bot
 on:
   workflow_dispatch:
   schedule:
-    # Din mein 5 baar automatically video generate aur upload karne ka schedule
+    # Din mein 5 baar automatically 2-minute Global Affairs video generate aur upload karne ka schedule
     - cron: '0 3,7,11,15,19 * * *'
 
 permissions:
@@ -16,7 +16,7 @@ concurrency:
 jobs:
   build-video:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
 
     env:
       PYTHONUNBUFFERED: '1'
@@ -25,6 +25,9 @@ jobs:
       PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+      YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+      YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
       FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
       FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
 
