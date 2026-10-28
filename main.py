@@ -44,8 +44,22 @@ def get_gemini_script():
     print("🧠 Contacting Gemini AI for a New Global Event Script...")
     genai.configure(api_key=GEMINI_API_KEY)
     
-    # 404 error se bachne ke liye standard gemini-pro model use kiya gaya hai
-    model = genai.GenerativeModel('gemini-pro')
+    # Auto-Detect Available Model to prevent 404 Errors
+    selected_model_name = 'gemini-1.5-flash' # Default fallback
+    try:
+        available_models = genai.list_models()
+        for m in available_models:
+            if 'generateContent' in m.supported_generation_methods:
+                if 'gemini-1.5-flash' in m.name:
+                    selected_model_name = m.name
+                    break
+                elif 'gemini-pro' in m.name or 'gemini-1.5-pro' in m.name:
+                    selected_model_name = m.name
+    except Exception as e:
+        print(f"Model auto-detect issue (using fallback): {e}")
+
+    print(f"✅ Successfully selected AI Model: {selected_model_name}")
+    model = genai.GenerativeModel(selected_model_name)
     
     prompt = f"""
     You are an expert YouTube scriptwriter and video producer. 
