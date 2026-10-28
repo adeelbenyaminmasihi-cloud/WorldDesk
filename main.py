@@ -45,8 +45,7 @@ def get_gemini_script():
     genai.configure(api_key=GEMINI_API_KEY)
     
     # Using gemini-1.5-flash for fast and reliable JSON generation
-    model = genai.GenerativeModel('gemini-1.5-flash')
-    
+model = genai.GenerativeModel('gemini-1.5-flash-latest')    
     prompt = f"""
     You are an expert YouTube scriptwriter and video producer. 
     Your task is to write a highly engaging, 2-minute video script about a VERY RECENT or ONGOING IMPORTANT GLOBAL EVENT (e.g., Geopolitics, Global Economy, Major Tech News, International Conflicts, Space Discoveries).
