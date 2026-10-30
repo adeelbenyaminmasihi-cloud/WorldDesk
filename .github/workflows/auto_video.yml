@@ -1,80 +1,52 @@
-name: Video Employee Bot
+name: Auto Global Affairs Video
 
 on:
-  workflow_dispatch:
   schedule:
-    # Din mein 5 baar automatically 2-minute Global Affairs video generate aur upload karne ka schedule
-    - cron: '0 3,7,11,15,19 * * *'
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
 
 permissions:
   contents: write
 
-concurrency:
-  group: video-employee-bot-${{ github.ref }}
-  cancel-in-progress: false
-
 jobs:
-  build-video:
+  build_and_publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
-
-    env:
-      PYTHONUNBUFFERED: '1'
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
-      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-      PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
-      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-      YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
-      YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
-      YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
-      FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
-      FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
 
     steps:
-      - name: Checkout repository
+      - name: Checkout Repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install FFmpeg and Fonts
+      - name: Install System Dependencies (FFmpeg & Fonts)
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends ffmpeg fontconfig fonts-dejavu-core
-          fc-cache -f
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg fonts-dejavu-core
 
-      - name: Install Python libraries
+      - name: Install Python Packages
         run: |
-          python -m pip install --upgrade pip
-          pip install --no-cache-dir edge-tts requests pillow
+          pip install --upgrade pip
+          pip install -r requirements.txt
 
-      - name: Run Video Generator Employee
-        run: python -u main.py
+      - name: Generate and Upload Video
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+          FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
+          FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
+        run: python main.py
 
-      - name: Save Used Topics Memory
-        if: always()
+      - name: Save Used Topics History
         run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add used_topics.json || true
-          if ! git diff --cached --quiet; then
-            git commit -m 'Remember used video topic [skip ci]'
-            git push || true
-          else
-            echo 'No used-topics changes to save.'
-          fi
-
-      - name: Upload generated video backup
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: generated-reel-${{ github.run_number }}
-          path: |
-            final_reel.mp4
-          if-no-files-found: warn
-          retention-days: 7
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add used_topics.json
+          git diff --staged --quiet || (git commit -m "Remember used video topic" && git pull --rebase origin main && git push origin main)
