@@ -1,5 +1,6 @@
 import os
 import re
+import time
 import json
 import random
 import asyncio
@@ -34,214 +35,6 @@ USED_TOPICS_FILE = "used_topics.json"
 FONT_BOLD = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 USED_MEDIA_URLS = set()
 
-# Built-in 2-Minute Global Current Affairs Topics (14 scenes each = ~120 seconds)
-FALLBACK_GLOBAL_TOPICS = [
-    {
-        "topic": "US vs China Semiconductor Chip War and Global Tech Dominance",
-        "tagline": "America aur China ki Chip War duniya ki economy ko kaise badal rahi hai? 🌍💻",
-        "description": "Taiwan ki TSMC chips, America ki pabandiyan aur China ka naya AI tech plan! Janiye kaise ek choti si silicon chip poori duniya ki superpower race ka faisla kar rahi hai.",
-        "badge": "TECH GEOPOLITICS",
-        "hook_visual_1": "computer microchip processor",
-        "hook_visual_2": "usa china flags",
-        "context_urdu": "آج کی جدید دنیا میں تیل سے زیادہ قیمتی چیز سلیکون چپس بن چکی ہیں، جن کے بغیر کوئی سمارٹ فون، کمپیوٹر، اے آئی سسٹم یا جدید جنگی طیارہ چل ہی نہیں سکتا۔",
-        "context_cap1": "TEEL SE ZYADA QEEMTI:",
-        "context_cap2": "SILICON MICROCHIPS!",
-        "ctx_visual_1": "semiconductor wafer lab",
-        "ctx_visual_2": "fighter jet cockpit",
-        "event_urdu": "امریکہ نے چین کی بڑھتی ہوئی ٹیکنالوجی اور ملٹری طاقت کو روکنے کے لیے جدید ترین اے آئی چپس اور لیتھوگرافی مشینوں کی ایکسپورٹ پر سخت ترین پابندیاں عائد کر دی ہیں۔",
-        "event_cap1": "AMERICA KI SAKHT PABANDI",
-        "event_cap2": "CHINA KI TECH PAR ROK!",
-        "evt_visual_1": "white house washington",
-        "evt_visual_2": "shipping containers port",
-        "impact_urdu": "اس جنگ کا سب سے بڑا مرکز تائیوان ہے، جہاں دنیا کی نوے فیصد ایڈوانس چپس بنانے والی کمپنی ٹی ایس ایم سی موجود ہے، جس کی وجہ سے پورے خطے میں کشیدگی بڑھ گئی ہے۔",
-        "impact_cap1": "TAIWAN KI TSMC FACTORY:",
-        "impact_cap2": "90% ADVANCED CHIPS KA GHAR!",
-        "imp_visual_1": "modern electronics factory",
-        "imp_visual_2": "naval warship ocean",
-        "response_urdu": "جواب میں چین نے بھی اربوں ڈالرز کا فنڈ جاری کیا ہے اور چپس بنانے میں استعمال ہونے والی نایاب دھاتوں یعنی گیلئم اور جرمینئم کی ایکسپورٹ پر شرائط لگا دی ہیں۔",
-        "response_cap1": "CHINA KA JAWABI WAR:",
-        "response_cap2": "RARE EARTH METALS PAR ROK!",
-        "res_visual_1": "mining industry minerals",
-        "res_visual_2": "chinese yuan money",
-        "future_urdu": "ماہرین کا کہنا ہے کہ اس چپ وار کی وجہ سے آنے والے سالوں میں موبائل فونز، لیپ ٹاپس اور گاڑیوں کی قیمتوں میں بڑا اضافہ ہو سکتا ہے اور ٹیکنالوجی دو حصوں میں بٹ جائے گی۔",
-        "future_cap1": "GLOBAL SUPPLY CHAIN:",
-        "future_cap2": "TECH KI DUNIYA DO HISSON MEIN!",
-        "fut_visual_1": "smartphone motherboard repair",
-        "fut_visual_2": "stock market trading screen",
-        "vid_queries": ["microchip", "technology", "factory", "global network"]
-    },
-    {
-        "topic": "BRICS Expansion and De-Dollarization Challenge to US Dollar",
-        "tagline": "Kya BRICS countries American Dollar ki badshahat khatam karne wali hain? 💵🌍",
-        "description": "China, Russia, Saudi Arabia aur BRICS ممالک apni local currencies aur gold mein trade kyun barha rahe hain? Global economy aur Dollar ke mustaqbil ka mukammal tajziya.",
-        "badge": "GLOBAL ECONOMY",
-        "hook_visual_1": "us dollar bills gold",
-        "hook_visual_2": "world leaders summit",
-        "context_urdu": "پچھلے اسی سالوں سے امریکی ڈالر پوری دنیا کی تجارت اور بینکاری کا بے تاج بادشاہ رہا ہے، جہاں تیل سے لے کر سونے تک ہر چیز ڈالر میں خریدی جاتی تھی۔",
-        "context_cap1": "80 SAAL SE DUNYA PAR",
-        "context_cap2": "AMERICAN DOLLAR KA RAAJ!",
-        "ctx_visual_1": "federal reserve bank",
-        "ctx_visual_2": "gold bars vault",
-        "event_urdu": "مگر اب برکس تنظیم میں نئے ممالک کی شمولیت کے بعد چین، روس اور دیگر بڑی معیشتوں نے ڈالر کے بجائے اپنی مقامی کرنسیوں میں تجارت کا آغاز کر دیا ہے۔",
-        "event_cap1": "BRICS COUNTRIES KA FAISLA:",
-        "event_cap2": "LOCAL CURRENCY MEIN TRADE!",
-        "evt_visual_1": "international conference flags",
-        "evt_visual_2": "cargo ship containers",
-        "impact_urdu": "اس تبدیلی کی سب سے بڑی وجہ مغربی پابندیاں اور امریکہ کا بڑھتا ہوا قرضہ ہے، جس نے دنیا کے مرکزی بینکوں کو ڈالر کے بجائے دھڑا دھڑ سونا خریدنے پر مجبور کر دیا ہے۔",
-        "impact_cap1": "CENTRAL BANKS KA RUKH:",
-        "impact_cap2": "DOLLAR CHORO, SONA KHARIDO!",
-        "imp_visual_1": "gold bullion coins",
-        "imp_visual_2": "financial chart decline",
-        "response_urdu": "برکس ممالک اب ایک نئے ڈیجیٹل پیمنٹ سسٹم پر بھی کام کر رہے ہیں تاکہ بین الاقوامی لین دین کے لیے سوئفٹ سسٹم پر انحصار ختم کیا جا سکے۔",
-        "response_cap1": "SWIFT SYSTEM KA MUTABADIL:",
-        "response_cap2": "NAYA DIGITAL PAYMENT SYSTEM!",
-        "res_visual_1": "digital blockchain network",
-        "res_visual_2": "banking server room",
-        "future_urdu": "معاشی ماہرین کے مطابق ڈالر فوری طور پر ختم تو نہیں ہوگا، لیکن دنیا اب ایک ملٹی پولر کرنسی سسٹم کی طرف بڑھ رہی ہے جہاں طاقت صرف ایک ملک کے پاس نہیں رہے گی۔",
-        "future_cap1": "MULTI-POLAR WORLD ORDER:",
-        "future_cap2": "GLOBAL ECONOMY KA NAYA DAUR!",
-        "fut_visual_1": "world map glowing connections",
-        "fut_visual_2": "currency exchange board",
-        "vid_queries": ["money", "gold", "shipping", "finance"]
-    },
-    {
-        "topic": "Red Sea Shipping Crisis and Global Oil Supply Chain Disruption",
-        "tagline": "Red Sea aur Suez Canal ke bohran se poori duniya mein mehngai kyun barh rahi hai? 🚢⛽",
-        "description": "Samandari raston par hamton ki wajah se cargo ships ko Africa ke gird lamba chakkar kyun lagana par raha hai? Global trade aur oil prices par iska asar.",
-        "badge": "TRADE CRISIS",
-        "hook_visual_1": "cargo ship ocean storm",
-        "hook_visual_2": "oil tanker ship",
-        "context_urdu": "بحیرہ احمر اور نہر سوئز دنیا کی تجارت کی سب سے اہم شہ رگ ہیں، جہاں سے ہر سال دنیا کے بارہ فیصد سے زائد سامان اور تیل کے جہاز گزرتے ہیں۔",
-        "context_cap1": "RED SEA AUR SUEZ CANAL:",
-        "context_cap2": "GLOBAL TRADE KI SHAH-RAG!",
-        "ctx_visual_1": "suez canal ship",
-        "ctx_visual_2": "port crane containers",
-        "event_urdu": "مشرق وسطیٰ کی کشیدگی اور بحری جہازوں پر ہونے والے ڈرون اور میزائل حملوں نے دنیا کی سب سے بڑی شپنگ کمپنیوں کو اس راستے سے گزرنے سے روک دیا ہے۔",
-        "event_cap1": "SAMANDAR MEIN KHATRA:",
-        "event_cap2": "SHIPPING COMPANIES RUK GAYIN!",
-        "evt_visual_1": "military navy ship",
-        "evt_visual_2": "radar screen navigation",
-        "impact_urdu": "اب یورپ اور ایشیا کے درمیان چلنے والے جہازوں کو افریقہ کے گرد چکر لگا کر جانا پڑتا ہے، جس سے سفر میں دس سے چودہ دن کا اضافہ اور لاکھوں ڈالر کا اضافی ایندھن خرچ ہو رہا ہے۔",
-        "impact_cap1": "AFRICA KE GIRD LAMBA SAFAR:",
-        "impact_cap2": "14 DIN AUR LAKHON DOLLAR EXTRA!",
-        "imp_visual_1": "world map shipping route",
-        "imp_visual_2": "fuel pump gauge",
-        "response_urdu": "کنٹینرز کے کرائے اور انشورنس کی قیمتیں تین گنا تک بڑھ چکی ہیں، جس کا سیدھا بوجھ امپورٹڈ سامان، الیکٹرانکس اور خوراک کی قیمتوں پر پڑ رہا ہے۔",
-        "response_cap1": "SHIPPING COST 3 GUNA ZYADA:",
-        "response_cap2": "HAR CHEEZ MEHNGI HONE LAGI!",
-        "res_visual_1": "supermarket shelves shopping",
-        "res_visual_2": "calculator bills money",
-        "future_urdu": "جب تک سمندری راستوں میں مکمل امن قائم نہیں ہوتا، عالمی سپلائی چین متاثر رہے گی اور دنیا بھر کے صارفین کو مہنگائی کا سامنا کرنا پڑے گا۔",
-        "future_cap1": "SAMANDARI RASTON KI JANG:",
-        "future_cap2": "GLOBAL MEHNGAI KA BOHRAN!",
-        "fut_visual_1": "industrial harbor sunset",
-        "fut_visual_2": "global logistics network",
-        "vid_queries": ["cargo ship", "ocean", "port", "economy"]
-    },
-    {
-        "topic": "Artificial Intelligence Regulation and Global Job Market Transformation",
-        "tagline": "AI Revolution: Agle 5 saal mein kaunsi jobs khatam aur kaunsi nayi banengi? 🤖⚡",
-        "description": "Autonomous AI agents, robotics aur global governments ke naye AI laws! Janiye kaise Artificial Intelligence duniya ke har mulk ki economy ko badal rahi hai.",
-        "badge": "AI REVOLUTION",
-        "hook_visual_1": "humanoid robot artificial intelligence",
-        "hook_visual_2": "modern office computers",
-        "context_urdu": "مصنوعی ذہانت یعنی اے آئی اب صرف چیٹ بوٹس تک محدود نہیں رہی، بلکہ اب ایسے خودکار اے آئی ایجنٹس آ چکے ہیں جو پورا سافٹ ویئر، ویڈیو اور بزنس آپریشن خود چلا سکتے ہیں۔",
-        "context_cap1": "CHATBOTS SE AAGE KI DUNIYA:",
-        "context_cap2": "AUTONOMOUS AI AGENTS!",
-        "ctx_visual_1": "futuristic data center",
-        "ctx_visual_2": "programmer coding screen",
-        "event_urdu": "آئی ایم ایف اور ورلڈ اکنامک فورم کی تازہ رپورٹ کے مطابق دنیا بھر میں چالیس فیصد ملازمتیں اے آئی کی وجہ سے براہ راست متاثر ہونے جا رہی ہیں۔",
-        "event_cap1": "IMF KI BARI REPORT:",
-        "event_cap2": "40% GLOBAL JOBS PAR ASAR!",
-        "evt_visual_1": "business analytics chart",
-        "evt_visual_2": "corporate building glass",
-        "impact_urdu": "کسٹمر سپورٹ، ڈیٹا انٹری، بیسک کوڈنگ اور گرافک ڈیزائن کے شعبوں میں بڑی کمپنیاں اب انسانوں کے بجائے اے آئی سسٹمز کو تیزی سے اپنا رہی ہیں۔",
-        "impact_cap1": "COMPANIES KA NAYA RUKH:",
-        "impact_cap2": "AUTOMATION SE COST CUTTING!",
-        "imp_visual_1": "empty office desks",
-        "imp_visual_2": "robotic arm factory",
-        "response_urdu": "دوسری طرف یورپی یونین اور دیگر ممالک نے اے آئی کے خطرات، ڈیپ فیکس اور سائبر حملوں کو روکنے کے لیے تاریخ کے پہلے سخت اے آئی قوانین نافذ کر دیے ہیں۔",
-        "response_cap1": "DEEPFAKES AUR CYBER KHATRA:",
-        "response_cap2": "DUNIYA MEIN NAYE AI QAWANEEN!",
-        "res_visual_1": "cyber security lock digital",
-        "res_visual_2": "parliament building europe",
-        "future_urdu": "ماہرین کا ماننا ہے کہ اے آئی انسانوں کی جگہ نہیں لے گی، بلکہ جو انسان اے آئی کا استعمال جانتا ہوگا وہ ان لوگوں کی جگہ لے لے گا جو پرانے طریقے پر چل رہے ہیں۔",
-        "future_cap1": "FUTURE SURVIVAL RULE:",
-        "future_cap2": "AI SEEKHO AUR AAGE BARHO!",
-        "fut_visual_1": "person using futuristic tablet",
-        "fut_visual_2": "glowing brain neural network",
-        "vid_queries": ["artificial intelligence", "robot", "coding", "cybersecurity"]
-    },
-    {
-        "topic": "Global Climate Crisis Extreme Weather and Clean Energy Transition",
-        "tagline": "Record garmi, selaab aur badalta mausam: Duniya ka mustaqbil kya hai? 🌡️🌊",
-        "description": "Global warming ki wajah se duniya bhar mein extreme weather events kyun barh rahe hain? Green energy aur solar revolution ki taza tareen soorat-e-haal.",
-        "badge": "CLIMATE CRISIS",
-        "hook_visual_1": "extreme weather storm clouds",
-        "hook_visual_2": "melting glacier ice",
-        "context_urdu": "سائنسدانوں نے تصدیق کی ہے کہ حالیہ برس انسانی تاریخ کے گرم ترین سال ثابت ہوئے ہیں، جہاں زمین اور سمندروں کا درجہ حرارت خطرناک حدوں کو چھو رہا ہے۔",
-        "context_cap1": "TAREEKH KE GARAM TAREEN SAAL:",
-        "context_cap2": "ZAMEEN KA TEMPERATURE HIGH!",
-        "ctx_visual_1": "scorching sun desert",
-        "ctx_visual_2": "earth from space glowing",
-        "event_urdu": "اس ماحولیاتی تبدیلی کی وجہ سے کہیں صحراؤں میں اچانک طوفانی بارشیں اور سیلاب آ رہے ہیں، تو کہیں جنگلات میں لگنے والی آگ پورے شہروں کو لپیٹ میں لے رہی ہے۔",
-        "event_cap1": "AJEEB MAUSAMI TABDEELI:",
-        "event_cap2": "SEHRA MEIN BARISH AUR JANGAL MEIN AAG!",
-        "evt_visual_1": "wildfire forest smoke",
-        "evt_visual_2": "flooded city cars",
-        "impact_urdu": "موسمیاتی آفات کی وجہ سے ہر سال عالمی معیشت کو سینکڑوں ارب ڈالرز کا نقصان ہو رہا ہے اور فصلوں کی پیداوار متاثر ہونے سے خوراک کی قیمتیں بڑھ رہی ہیں۔",
-        "impact_cap1": "FASLON AUR ECONOMY KO NUQSAN:",
-        "impact_cap2": "FOOD SECURITY KA BOHRAN!",
-        "imp_visual_1": "dry agricultural field",
-        "imp_visual_2": "wheat grain harvest",
-        "response_urdu": "اس بحران سے نمٹنے کے لیے اب پوری دنیا میں سولر انرجی، ونڈ پاور اور الیکٹرک گاڑیوں پر ریکارڈ رفتار سے سرمایہ کاری کی جا رہی ہے۔",
-        "response_cap1": "GREEN ENERGY INQALAB:",
-        "response_cap2": "SOLAR AUR WIND POWER KI DOUR!",
-        "res_visual_1": "solar panels farm",
-        "res_visual_2": "wind turbines ocean",
-        "future_urdu": "اگلے دس سال انسانیت کے لیے انتہائی اہم ہیں، کیونکہ کاربن کے اخراج کو کم کیے بغیر ہم آنے والی نسلوں کو ایک محفوظ زمین نہیں دے سکتے۔",
-        "future_cap1": "AGLE 10 SAAL KA FAISLA:",
-        "future_cap2": "ZAMEEN KO BACHANE KI JANG!",
-        "fut_visual_1": "green forest nature sunlight",
-        "fut_visual_2": "clean futuristic city",
-        "vid_queries": ["climate change", "storm", "solar energy", "nature"]
-    },
-    {
-        "topic": "New Space Race Moon Base Projects and Mars Colonization",
-        "tagline": "America, China aur SpaceX ki nayi Space Race: Chand par qabza kiska hoga? 🚀🌕",
-        "description": "Chand ke South Pole par barf aur minerals ki talash! NASA Artemis, China aur SpaceX Starship ke darmiyan khala mein nayi superpower jang.",
-        "badge": "SPACE RACE 2.0",
-        "hook_visual_1": "rocket launch flames",
-        "hook_visual_2": "moon surface crater",
-        "context_urdu": "انسان ایک بار پھر چاند اور مریخ کی طرف لوٹ رہا ہے، لیکن اس بار مقصد صرف جھنڈا لگانا نہیں بلکہ وہاں مستقل خلائی اڈے اور کارخانے بنانا ہے۔",
-        "context_cap1": "CHAND PAR WAPSI:",
-        "context_cap2": "MUSTAQIL SPACE BASE KA PLAN!",
-        "ctx_visual_1": "astronaut walking moon",
-        "ctx_visual_2": "space station orbit",
-        "event_urdu": "امریکہ کے آرٹیمس پروگرام، چین کے خلائی مشنز اور سپیس ایکس کے سٹار شپ راکٹ کے درمیان چاند کے جنوبی قطب پر پہنچنے کی سخت دوڑ لگی ہوئی ہے۔",
-        "event_cap1": "NASA, CHINA AUR SPACEX:",
-        "event_cap2": "MOON SOUTH POLE KI RACE!",
-        "evt_visual_1": "heavy rocket launchpad",
-        "evt_visual_2": "mission control room",
-        "impact_urdu": "چاند کے سدرن پول پر جمی ہوئی برف موجود ہے، جس سے نہ صرف خلا بازوں کے لیے پانی اور آکسیجن بنائی جا سکتی ہے بلکہ راکٹ کا فیول بھی تیار ہو سکتا ہے۔",
-        "impact_cap1": "CHAND PAR BARF KHAZANA:",
-        "impact_cap2": "OXYGEN AUR ROCKET FUEL BANEGA!",
-        "imp_visual_1": "ice crystals microscopic",
-        "imp_visual_2": "spaceship refueling space",
-        "response_urdu": "اس کے علاوہ چاند کی مٹی میں ہیلیم تھری نامی نایاب عنصر موجود ہے، جو مستقبل میں زمین کی توانائی کی تمام ضروریات پوری کرنے کی صلاحیت رکھتا ہے۔",
-        "response_cap1": "HELIUM-3 KA KHAZANA:",
-        "response_cap2": "FUTURE ENERGY KA ASLI RAAZ!",
-        "res_visual_1": "nuclear fusion reactor",
-        "res_visual_2": "planet earth night lights",
-        "future_urdu": "جو ملک چاند پر پہلے اپنا بیس قائم کرے گا، وہی مریخ کے سفر اور خلائی معیشت پر اگلی صدی تک حکمرانی کرے گا۔",
-        "future_cap1": "SPACE ECONOMY KI JANG:",
-        "future_cap2": "AGLI SADI KA SUPERPOWER KON?",
-        "fut_visual_1": "planet mars red landscape",
-        "fut_visual_2": "futuristic space colony",
-        "vid_queries": ["rocket launch", "astronaut", "space", "moon"]
-    }
-]
-
 
 def load_used_topics():
     if os.path.exists(USED_TOPICS_FILE):
@@ -257,233 +50,103 @@ def load_used_topics():
 
 def save_used_topics(used_list):
     try:
+        # Keep up to 1000 topics so nothing repeats
         with open(USED_TOPICS_FILE, "w", encoding="utf-8") as f:
-            json.dump(used_list[-200:], f, indent=2, ensure_ascii=False)
+            json.dump(used_list[-1000:], f, indent=2, ensure_ascii=False)
     except Exception as e:
         print(f"  [!] Could not save used topics: {e}")
 
 
-def fetch_live_world_news_headlines():
-    """Fetches real-time global current affairs headlines from Google News RSS."""
+def is_topic_duplicate(candidate, used_list):
+    """Checks exact match or high word overlap so similar topics never repeat."""
+    if not candidate:
+        return True
+    cand_clean = re.sub(r"[^a-z0-9\s]", "", candidate.lower()).strip()
+    cand_words = {w for w in cand_clean.split() if len(w) > 3}
+    for u in used_list:
+        u_clean = re.sub(r"[^a-z0-9\s]", "", u.lower()).strip()
+        if cand_clean == u_clean or cand_clean in u_clean or u_clean in cand_clean:
+            return True
+        u_words = {w for w in u_clean.split() if len(w) > 3}
+        if cand_words and u_words:
+            overlap = len(cand_words & u_words) / float(min(len(cand_words), len(u_words)))
+            if overlap >= 0.7:
+                return True
+    return False
+
+
+def fetch_live_world_news_headlines(used_topics):
+    """Fetches real-time global headlines from Google News, BBC, and Al Jazeera RSS feeds and filters out used ones."""
     headlines = []
     rss_urls = [
         "https://news.google.com/rss/headlines/section/topic/WORLD?hl=en-US&gl=US&ceid=US:en",
         "https://news.google.com/rss/headlines/section/topic/BUSINESS?hl=en-US&gl=US&ceid=US:en",
-        "https://news.google.com/rss/headlines/section/topic/TECHNOLOGY?hl=en-US&gl=US&ceid=US:en"
+        "https://news.google.com/rss/headlines/section/topic/TECHNOLOGY?hl=en-US&gl=US&ceid=US:en",
+        "https://news.google.com/rss/headlines/section/topic/SCIENCE?hl=en-US&gl=US&ceid=US:en",
+        "http://feeds.bbci.co.uk/news/world/rss.xml",
+        "https://www.aljazeera.com/xml/rss/all.xml"
     ]
     for url in rss_urls:
         try:
             r = requests.get(url, headers=HEADERS, timeout=15)
             if r.status_code == 200:
                 root = ET.fromstring(r.content)
-                for item in root.findall(".//item")[:10]:
+                for item in root.findall(".//item")[:15]:
                     title_el = item.find("title")
                     if title_el is not None and title_el.text:
                         clean_title = title_el.text.split(" - ")[0].strip()
-                        if len(clean_title) > 20 and clean_title not in headlines:
-                            headlines.append(clean_title)
+                        if len(clean_title) > 22 and clean_title not in headlines:
+                            if not is_topic_duplicate(clean_title, used_topics):
+                                headlines.append(clean_title)
         except Exception as e:
             print(f"  [!] RSS fetch note: {e}")
-    return headlines[:25]
+
+    random.shuffle(headlines)
+    return headlines[:30]
 
 
-def discover_gemini_model():
-    """Dynamically finds a working Gemini model via REST API so 404 errors never happen."""
-    if not GEMINI_API_KEY:
+def clean_and_parse_json(raw_text):
+    """Safely extracts and parses JSON even if the AI wraps it in markdown or extra text."""
+    if not raw_text:
         return None
+    raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text.strip())
+    raw_text = re.sub(r"\s*```$", "", raw_text.strip())
+    start = raw_text.find("{")
+    end = raw_text.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        raw_text = raw_text[start:end + 1]
     try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models?key={GEMINI_API_KEY}"
-        r = requests.get(url, timeout=20)
-        if r.status_code == 200:
-            models = r.json().get("models", [])
-            capable = []
-            for m in models:
-                methods = m.get("supportedGenerationMethods", [])
-                name = m.get("name", "")
-                if "generateContent" in methods and "gemini" in name.lower():
-                    capable.append(name)
-            preferred_order = [
-                "models/gemini-2.5-flash",
-                "models/gemini-2.0-flash",
-                "models/gemini-1.5-flash-latest",
-                "models/gemini-1.5-flash",
-                "models/gemini-2.5-pro",
-                "models/gemini-1.5-pro-latest"
-            ]
-            for pref in preferred_order:
-                if pref in capable:
-                    return pref
-            for c in capable:
-                if "flash" in c and "tts" not in c and "image" not in c:
-                    return c
-            if capable:
-                return capable[0]
-    except Exception as e:
-        print(f"  [!] Gemini model discovery note: {e}")
-    return "models/gemini-2.0-flash"
+        return json.loads(raw_text)
+    except Exception:
+        # Remove trailing commas before closing braces/brackets if present
+        fixed = re.sub(r",\s*([\]}])", r"\1", raw_text)
+        return json.loads(fixed)
 
 
-def build_fourteen_scenes_from_template(chosen):
-    """Expands a topic template into a full 14-scene (~2 minute) broadcast script."""
-    v_queries = chosen.get("vid_queries", ["world news", "technology", "economy", "global"])
-    while len(v_queries) < 4:
-        v_queries.append("world news")
+def build_prompt(live_headlines, used_topics):
+    chosen_headline = live_headlines[0] if live_headlines else "Global Geopolitics & Economic Shift"
+    return f"""You are an elite international news producer creating a 2-minute (14-scene) video on a MAJOR CURRENT GLOBAL EVENT.
 
-    return {
-        "topic": chosen["topic"],
-        "title": f"🌍 {chosen['topic']} | Global Current Affairs",
-        "tagline": chosen["tagline"],
-        "description": chosen["description"],
-        "hashtags": "#GlobalAffairs #WorldNews #CurrentEvents #Geopolitics #UrduNews #GlobalUpdate #TrendingNews #ViralVideo",
-        "category_badge": chosen.get("badge", "GLOBAL AFFAIRS"),
-        "scenes": [
-            {
-                "tts_urdu": "اس وقت پوری دنیا میں ایک ایسا بڑا عالمی واقعہ رونما ہو رہا ہے جس کا براہ راست اثر آنے والے دنوں میں ہر ملک کی معیشت اور ہماری روزمرہ زندگی پر پڑنے والا ہے!",
-                "caption_part1": "DUNIYA MEIN BARI HALCHAL:",
-                "caption_part2": "HAR MULK PAR HOGA ASAR!",
-                "search_query_1": chosen["hook_visual_1"],
-                "search_query_2": chosen["hook_visual_2"],
-                "video_query": v_queries[0]
-            },
-            {
-                "tts_urdu": chosen["context_urdu"],
-                "caption_part1": chosen["context_cap1"],
-                "caption_part2": chosen["context_cap2"],
-                "search_query_1": chosen["ctx_visual_1"],
-                "search_query_2": chosen["ctx_visual_2"],
-                "video_query": ""
-            },
-            {
-                "tts_urdu": "عالمی طاقتوں کے درمیان وسائل، ٹیکنالوجی اور تجارتی راستوں پر کنٹرول حاصل کرنے کی یہ دوڑ اب ایک نئے اور انتہائی فیصلہ کن مرحلے میں داخل ہو چکی ہے۔",
-                "caption_part1": "SUPERPOWERS KI NAYI DOUR:",
-                "caption_part2": "FAISLA KUN MARHALA SHURU!",
-                "search_query_1": "world map geopolitics",
-                "search_query_2": "united nations assembly",
-                "video_query": ""
-            },
-            {
-                "tts_urdu": chosen["event_urdu"],
-                "caption_part1": chosen["event_cap1"],
-                "caption_part2": chosen["event_cap2"],
-                "search_query_1": chosen["evt_visual_1"],
-                "search_query_2": chosen["evt_visual_2"],
-                "video_query": v_queries[1]
-            },
-            {
-                "tts_urdu": "بین الاقوامی میڈیا اور دفاعی تجزیہ کاروں کے مطابق اس فیصلے نے عالمی منڈیوں اور سفارتی تعلقات میں ایک نیا بھونچال پیدا کر دیا ہے۔",
-                "caption_part1": "INTERNATIONAL MEDIA REPORT:",
-                "caption_part2": "ALAMI MANDIYON MEIN HALCHAL!",
-                "search_query_1": "breaking news studio broadcast",
-                "search_query_2": "stock exchange trading floor",
-                "video_query": ""
-            },
-            {
-                "tts_urdu": chosen["impact_urdu"],
-                "caption_part1": chosen["impact_cap1"],
-                "caption_part2": chosen["impact_cap2"],
-                "search_query_1": chosen["imp_visual_1"],
-                "search_query_2": chosen["imp_visual_2"],
-                "video_query": v_queries[2]
-            },
-            {
-                "tts_urdu": "جب بھی بڑی طاقتوں کے درمیان ایسی کشیدگی یا پالیسی کی تبدیلی آتی ہے تو اس کی سب سے بڑی قیمت ترقی پذیر ممالک اور عام شہریوں کو چکانی پڑتی ہے۔",
-                "caption_part1": "BARI TAQATON KA TAKRAO:",
-                "caption_part2": "AAM AADMI PAR SEEDHA BOJH!",
-                "search_query_1": "crowded city street people",
-                "search_query_2": "global inflation chart",
-                "video_query": ""
-            },
-            {
-                "tts_urdu": chosen["response_urdu"],
-                "caption_part1": chosen["response_cap1"],
-                "caption_part2": chosen["response_cap2"],
-                "search_query_1": chosen["res_visual_1"],
-                "search_query_2": chosen["res_visual_2"],
-                "video_query": ""
-            },
-            {
-                "tts_urdu": "دنیا بھر کے مرکزی بینک، ملٹی نیشنل کمپنیاں اور حکومتیں اب ہنگامی بنیادوں پر اپنی معاشی اور دفاعی حکمت عملی کو تبدیل کر رہی ہیں۔",
-                "caption_part1": "GOVERNMENTS AUR BANKS:",
-                "caption_part2": "EMERGENCY POLICY SHIFT!",
-                "search_query_1": "central bank building",
-                "search_query_2": "executives boardroom meeting",
-                "video_query": v_queries[3]
-            },
-            {
-                "tts_urdu": "اعداد و شمار بتاتے ہیں کہ پچھلے چند مہینوں کے دوران اس شعبے میں اربوں ڈالرز کی سرمایہ کاری کا رخ بدلا ہے جو مستقبل کے نئے عالمی نظام کا اشارہ ہے۔",
-                "caption_part1": "ARBON DOLLARS KI SHIFT:",
-                "caption_part2": "NAYE ALAMI NIZAM KA ISHARA!",
-                "search_query_1": "financial data screen graphs",
-                "search_query_2": "international trade cargo",
-                "video_query": ""
-            },
-            {
-                "tts_urdu": chosen["future_urdu"],
-                "caption_part1": chosen["future_cap1"],
-                "caption_part2": chosen["future_cap2"],
-                "search_query_1": chosen["fut_visual_1"],
-                "search_query_2": chosen["fut_visual_2"],
-                "video_query": ""
-            },
-            {
-                "tts_urdu": "پاکستان اور خطے کے دیگر ممالک کے لیے بھی یہ وقت انتہائی اہم ہے کہ وہ ان عالمی تبدیلیوں کو سمجھیں اور جدید ٹیکنالوجی اور معیشت میں اپنی جگہ بنائیں۔",
-                "caption_part1": "PAKISTAN AUR KHITTE KE LIYE:",
-                "caption_part2": "WAQT KE SATH BADALNA LAZMI!",
-                "search_query_1": "modern city skyline dusk",
-                "search_query_2": "young professionals working laptops",
-                "video_query": ""
-            },
-            {
-                "tts_urdu": "تاریخ گواہ ہے کہ جو قومیں عالمی حالات اور ٹیکنالوجی کے بدلتے طوفان کو وقت سے پہلے بھانپ لیتی ہیں، وہی مستقبل کی دوڑ میں آگے نکلتی ہیں۔",
-                "caption_part1": "TAREEKH KA SABQ:",
-                "caption_part2": "JO SAMJHEGA WOHI AAGE JAYEGA!",
-                "search_query_1": "globe network connections",
-                "search_query_2": "futuristic highway lights",
-                "video_query": ""
-            },
-            {
-                "tts_urdu": "دنیا کے ان اہم ترین حالات، جیو پولیٹکس اور گلوبل افیئرز کا روزانہ آسان زبان میں تجزیہ دیکھنے کے لیے ہمارے چینل کو ابھی سبسکرائب اور فالو کر لیں!",
-                "caption_part1": "DAILY GLOBAL AFFAIRS KE LIYE:",
-                "caption_part2": "ABHI SUBSCRIBE AUR FOLLOW KAREIN!",
-                "search_query_1": "smartphone social media notification",
-                "search_query_2": "world news studio",
-                "video_query": ""
-            }
-        ]
-    }
+PRIMARY BREAKING NEWS TO COVER TODAY:
+"{chosen_headline}"
 
+Other live headlines for context (you may use the primary headline above or pick the most impactful one from this list):
+{json.dumps(live_headlines[:12], ensure_ascii=False)}
 
-def generate_script_via_gemini(used_topics):
-    """Uses Gemini REST API + Live Google News RSS to generate a fresh 14-scene (2-minute) script."""
-    if not GEMINI_API_KEY:
-        return None
+CRITICAL RULE: You MUST NOT pick any topic already in this used list:
+{json.dumps(used_topics[-80:], ensure_ascii=False)}
 
-    model_name = discover_gemini_model()
-    if not model_name:
-        return None
-
-    live_headlines = fetch_live_world_news_headlines()
-    print(f"🧠 Generating 2-Minute Global Affairs Script via {model_name}...")
-
-    prompt = f"""You are an elite international news producer creating a 2-minute (14-scene) video on a MAJOR CURRENT GLOBAL EVENT.
-Today's live global news headlines for inspiration:
-{json.dumps(live_headlines, ensure_ascii=False)}
-
-CRITICAL RULE: Do NOT pick any topic already in this used list:
-{json.dumps(used_topics[-60:], ensure_ascii=False)}
-
-Pick ONE major ongoing global affair (geopolitics, global economy, tech war, energy crisis, space race, climate event, or international trade).
 Return ONLY a raw, valid JSON object with NO markdown formatting and NO code fences, matching this EXACT schema:
 {{
-  "topic": "Unique concise English topic title",
+  "topic": "Unique specific English headline/topic title (must not match used list)",
   "title": "🌍 Catchy Roman Urdu Title | Global Update",
   "tagline": "Engaging 1-line Roman Urdu hook with emojis",
   "description": "2-3 sentence Roman Urdu summary of the global event and why it matters.",
   "hashtags": "#GlobalAffairs #WorldNews #Geopolitics #UrduNews #CurrentEvents #Viral",
-  "category_badge": "SHORT 2-3 WORD ENGLISH BADGE (e.g. GLOBAL CRISIS)",
+  "category_badge": "SHORT 2-3 WORD ENGLISH BADGE",
   "scenes": [
     {{
-      "tts_urdu": "Must be written in REAL URDU SCRIPT (اردو رسم الخط) around 22 to 28 words so TTS speaks naturally for ~8.5 seconds.",
+      "tts_urdu": "Must be written in REAL URDU SCRIPT (اردو رسم الخط) around 20 to 26 words so TTS speaks naturally for ~8.5 seconds.",
       "caption_part1": "SHORT UPPERCASE ROMAN URDU LINE 1 (MAX 24 CHARS)",
       "caption_part2": "SHORT UPPERCASE ROMAN URDU LINE 2 (MAX 24 CHARS)",
       "search_query_1": "2-3 word English stock photo keyword",
@@ -492,63 +155,287 @@ Return ONLY a raw, valid JSON object with NO markdown formatting and NO code fen
     }}
   ]
 }}
-Ensure the `scenes` array has EXACTLY 14 scenes so the total video duration is 2 minutes (~120 seconds)."""
+Ensure the `scenes` array has EXACTLY 14 scenes."""
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/{model_name}:generateContent?key={GEMINI_API_KEY}"
-    payload = {
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {
-            "temperature": 0.75,
-            "responseMimeType": "application/json"
-        }
-    }
 
+def discover_gemini_models():
+    """Returns a prioritized list of working Gemini models for this API key."""
+    default_models = [
+        "models/gemini-2.5-flash",
+        "models/gemini-2.0-flash",
+        "models/gemini-1.5-flash-latest",
+        "models/gemini-1.5-flash"
+    ]
+    if not GEMINI_API_KEY:
+        return []
     try:
-        resp = requests.post(url, json=payload, timeout=45)
-        if resp.status_code != 200:
-            del payload["generationConfig"]["responseMimeType"]
-            resp = requests.post(url, json=payload, timeout=45)
-
-        if resp.status_code == 200:
-            candidates = resp.json().get("candidates", [])
-            if candidates:
-                raw_text = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "").strip()
-                raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text)
-                raw_text = re.sub(r"\s*```$", "", raw_text)
-                script_data = json.loads(raw_text.strip())
-                scenes = script_data.get("scenes", [])
-                if script_data.get("topic") and len(scenes) >= 10:
-                    print(f"  [✓] Gemini generated 2-min script ({len(scenes)} scenes): {script_data['topic']}")
-                    return script_data
-        else:
-            print(f"  [!] Gemini API status {resp.status_code}: {resp.text[:160]}")
+        url = f"https://generativelanguage.googleapis.com/v1beta/models?key={GEMINI_API_KEY}"
+        r = requests.get(url, timeout=15)
+        if r.status_code == 200:
+            models = r.json().get("models", [])
+            capable = [
+                m.get("name", "") for m in models
+                if "generateContent" in m.get("supportedGenerationMethods", [])
+                and "gemini" in m.get("name", "").lower()
+                and "tts" not in m.get("name", "").lower()
+                and "image" not in m.get("name", "").lower()
+            ]
+            ordered = [m for m in default_models if m in capable]
+            for c in capable:
+                if c not in ordered and "flash" in c:
+                    ordered.append(c)
+            return ordered if ordered else default_models
     except Exception as e:
-        print(f"  [!] Gemini generation fallback note: {e}")
+        print(f"  [!] Gemini model discovery note: {e}")
+    return default_models
+
+
+def generate_script_via_gemini(live_headlines, used_topics):
+    """Tries multiple Gemini models with 8192 maxOutputTokens so JSON never truncates."""
+    if not GEMINI_API_KEY:
+        print("  [!] GEMINI_API_KEY is empty. Moving to free AI fallback...")
+        return None
+
+    models_to_try = discover_gemini_models()
+    prompt = build_prompt(live_headlines, used_topics)
+
+    for model_name in models_to_try:
+        print(f"🧠 Attempting 2-Minute Script via {model_name}...")
+        url = f"https://generativelanguage.googleapis.com/v1beta/{model_name}:generateContent?key={GEMINI_API_KEY}"
+        payload = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {
+                "temperature": 0.85,
+                "maxOutputTokens": 8192,
+                "responseMimeType": "application/json"
+            }
+        }
+        try:
+            resp = requests.post(url, json=payload, timeout=60)
+            if resp.status_code != 200:
+                payload["generationConfig"].pop("responseMimeType", None)
+                resp = requests.post(url, json=payload, timeout=60)
+
+            if resp.status_code == 200:
+                candidates = resp.json().get("candidates", [])
+                if candidates:
+                    raw_text = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                    script_data = clean_and_parse_json(raw_text)
+                    if script_data and script_data.get("topic") and len(script_data.get("scenes", [])) >= 10:
+                        if not is_topic_duplicate(script_data["topic"], used_topics):
+                            print(f"  [✓] Gemini generated fresh script: {script_data['topic']}")
+                            return script_data
+                        else:
+                            print(f"  [!] Gemini picked a duplicate topic ({script_data['topic']}), retrying...")
+            else:
+                print(f"  [!] {model_name} HTTP {resp.status_code}: {resp.text[:160]}")
+        except Exception as e:
+            print(f"  [!] {model_name} exception: {e}")
+        time.sleep(2)
 
     return None
 
 
+def generate_script_via_pollinations(live_headlines, used_topics):
+    """Zero-API-key free AI fallback using Pollinations OpenAI endpoint + live RSS news."""
+    print("🌐 Attempting Free AI Script Generation via Pollinations OpenAI API...")
+    prompt = build_prompt(live_headlines, used_topics)
+
+    for attempt in range(2):
+        try:
+            resp = requests.post(
+                "https://text.pollinations.ai/openai",
+                headers={"Content-Type": "application/json"},
+                json={
+                    "model": "openai",
+                    "messages": [
+                        {"role": "system", "content": "You are an expert Urdu news scriptwriter. Output strictly valid JSON only."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "temperature": 0.8,
+                    "seed": random.randint(1, 999999)
+                },
+                timeout=75
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                raw_text = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+                script_data = clean_and_parse_json(raw_text)
+                if script_data and script_data.get("topic") and len(script_data.get("scenes", [])) >= 10:
+                    if not is_topic_duplicate(script_data["topic"], used_topics):
+                        print(f"  [✓] Pollinations AI generated fresh script: {script_data['topic']}")
+                        return script_data
+        except Exception as e:
+            print(f"  [!] Pollinations AI attempt {attempt + 1} note: {e}")
+        time.sleep(2)
+
+    return None
+
+
+def build_dynamic_live_news_fallback(live_headlines, used_topics):
+    """If all AI APIs are unreachable, dynamically converts a fresh unused RSS headline into a unique script."""
+    fresh_headline = None
+    for h in live_headlines:
+        if not is_topic_duplicate(h, used_topics):
+            fresh_headline = h
+            break
+    if not fresh_headline:
+        fresh_headline = f"Global Geopolitical & Economic Shift Update {int(time.time())}"
+
+    words = [w for w in re.sub(r"[^a-zA-Z0-9\s]", "", fresh_headline).split() if len(w) > 3]
+    kw1 = " ".join(words[:2]) if len(words) >= 2 else "world news"
+    kw2 = " ".join(words[2:4]) if len(words) >= 4 else "global geopolitics"
+    short_upper = " ".join(words[:3]).upper()[:22] if words else "BREAKING WORLD NEWS"
+
+    print(f"📰 Building Dynamic Live-Headline Script for: {fresh_headline}")
+    return {
+        "topic": fresh_headline,
+        "title": f"🌍 {fresh_headline[:65]} | Global Update",
+        "tagline": f"Breaking Global Update: {fresh_headline} 🌍⚡",
+        "description": f"Alami media mein is waqt ki badi khabar: {fresh_headline}. Janiye is waqiye ka duniya aur global economy par mukammal asar.",
+        "hashtags": "#GlobalAffairs #WorldNews #BreakingNews #Geopolitics #UrduNews #GlobalUpdate",
+        "category_badge": "BREAKING NEWS",
+        "scenes": [
+            {
+                "tts_urdu": "عالمی میڈیا اور بین الاقوامی خبروں میں اس وقت ایک انتہائی اہم پیشرفت سامنے آ رہی ہے جس نے پوری دنیا کی توجہ اپنی طرف کھینچ لی ہے!",
+                "caption_part1": "INTERNATIONAL BREAKING:",
+                "caption_part2": short_upper,
+                "search_query_1": kw1,
+                "search_query_2": kw2,
+                "video_query": kw1
+            },
+            {
+                "tts_urdu": "اس نئے عالمی واقعے کے بعد بڑی طاقتوں کے درمیان سفارتی اور معاشی سطح پر ہنگامی رابطے اور اجلاس شروع ہو چکے ہیں۔",
+                "caption_part1": "ALAMI TAQATON MEIN",
+                "caption_part2": "HANGAMI DIPLOMACY SHURU!",
+                "search_query_1": f"{kw1} summit",
+                "search_query_2": "diplomatic meeting flags",
+                "video_query": ""
+            },
+            {
+                "tts_urdu": "ماہرین کے مطابق یہ معاملہ صرف ایک ملک تک محدود نہیں رہے گا بلکہ اس کے اثرات پورے خطے اور عالمی سپلائی چین پر مرتب ہوں گے۔",
+                "caption_part1": "POORE KHITTE AUR",
+                "caption_part2": "GLOBAL TRADE PAR ASAR!",
+                "search_query_1": kw2,
+                "search_query_2": "global trade network",
+                "video_query": ""
+            },
+            {
+                "tts_urdu": "بین الاقوامی خبر رساں اداروں کی تازہ ترین رپورٹس بتاتی ہیں کہ آنے والے چند دن اس بحران اور پالیسی کے حوالے سے انتہائی فیصلہ کن ثابت ہوں گے۔",
+                "caption_part1": "TAZA TAREEN REPORTS:",
+                "caption_part2": "FAISLA KUN MARHALA!",
+                "search_query_1": "breaking news broadcast",
+                "search_query_2": kw1,
+                "video_query": "world news"
+            },
+            {
+                "tts_urdu": "عالمی منڈیوں، سٹاک ایکسچینج اور توانائی کی قیمتوں میں بھی اس خبر کے بعد واضح ہلچل اور اتار چڑھاؤ دیکھا جا رہا ہے۔",
+                "caption_part1": "GLOBAL MARKETS MEIN",
+                "caption_part2": "TEZ UTAAR CHARHAO!",
+                "search_query_1": "stock market trading screen",
+                "search_query_2": "financial graph analysis",
+                "video_query": ""
+            },
+            {
+                "tts_urdu": "سیاسی اور دفاعی تجزیہ کاروں کا ماننا ہے کہ بڑی طاقتیں اب اپنے مفادات کے تحفظ کے لیے نئی حکمت عملی تیار کر رہی ہیں۔",
+                "caption_part1": "DEFENSE AUR POLITICS:",
+                "caption_part2": "NAYI STRATEGY TAYYAR!",
+                "search_query_1": kw2,
+                "search_query_2": "geopolitics map strategy",
+                "video_query": kw2
+            },
+            {
+                "tts_urdu": "جب بھی عالمی سطح پر ایسی بڑی تبدیلی آتی ہے تو ترقی پذیر ممالک کی معیشت اور عام شہریوں کی روزمرہ زندگی پر اس کا سیدھا اثر پڑتا ہے۔",
+                "caption_part1": "DEVELOPING COUNTRIES:",
+                "caption_part2": "AAM AADMI PAR ASAR!",
+                "search_query_1": "busy city street people",
+                "search_query_2": "economy inflation shopping",
+                "video_query": ""
+            },
+            {
+                "tts_urdu": "اقوام متحدہ اور دیگر عالمی اداروں میں بھی اس موضوع پر گہری تشویش اور مختلف ممالک کے درمیان سخت بیانات کا سلسلہ جاری ہے۔",
+                "caption_part1": "UNITED NATIONS AUR",
+                "caption_part2": "ALAMI IDARON KA MOQAF!",
+                "search_query_1": "united nations assembly",
+                "search_query_2": "press conference podium",
+                "video_query": ""
+            },
+            {
+                "tts_urdu": "جدید ٹیکنالوجی، معلومات کی جنگ اور معاشی پابندیوں کے اس دور میں ہر ملک اپنی پوزیشن مضبوط کرنے کی کوشش کر رہا ہے۔",
+                "caption_part1": "TECH AUR ECONOMY:",
+                "caption_part2": "HAR MULK KI NAYI DOUR!",
+                "search_query_1": "modern technology server",
+                "search_query_2": "central bank building",
+                "video_query": "technology"
+            },
+            {
+                "tts_urdu": "اعداد و شمار واضح کرتے ہیں کہ پچھلے چند ہفتوں کے واقعات نے عالمی سیاست کا رخ ایک نئی سمت میں موڑ دیا ہے۔",
+                "caption_part1": "ALAMI SIYASAT KA RUKH:",
+                "caption_part2": "NAYI SIMT MEIN SAFAR!",
+                "search_query_1": "data analytics screen",
+                "search_query_2": kw1,
+                "video_query": ""
+            },
+            {
+                "tts_urdu": "آنے والے ہفتوں میں ہونے والے بین الاقوامی مذاکرات اور فیصلے طے کریں گے کہ یہ معاملہ امن کی طرف جاتا ہے یا مزید کشیدگی کی طرف۔",
+                "caption_part1": "AANE WALE HAFTE:",
+                "caption_part2": "AMAN YA MAZEED KASHIDGI?",
+                "search_query_1": "world leaders handshake",
+                "search_query_2": kw2,
+                "video_query": ""
+            },
+            {
+                "tts_urdu": "پاکستان اور خطے کے دیگر ممالک کے لیے بھی ضروری ہے کہ وہ ان عالمی حالات پر گہری نظر رکھیں اور بروقت معاشی و سفارتی اقدامات کریں۔",
+                "caption_part1": "KHITTE KE MUMALIK:",
+                "caption_part2": "BARWAQT FAISLON KI ZAROORAT!",
+                "search_query_1": "modern city skyline",
+                "search_query_2": "government parliament building",
+                "video_query": ""
+            },
+            {
+                "tts_urdu": "تاریخ گواہ ہے کہ جو قومیں عالمی تبدیلیوں کو وقت پر سمجھ لیتی ہیں وہی ہر بحران سے محفوظ رہ کر آگے بڑھتی ہیں۔",
+                "caption_part1": "TAREEKH KA SABQ:",
+                "caption_part2": "WAQT PAR SAMajhna LAZMI!",
+                "search_query_1": "earth from space glowing",
+                "search_query_2": "futuristic city highway",
+                "video_query": ""
+            },
+            {
+                "tts_urdu": "دنیا بھر کی تازہ ترین خبروں، جیو پولیٹکس اور گلوبل افیئرز کا روزانہ مستند تجزیہ دیکھنے کے لیے ہمارے چینل کو ابھی فالو اور سبسکرائب کریں!",
+                "caption_part1": "DAILY GLOBAL UPDATES:",
+                "caption_part2": "ABHI SUBSCRIBE KAREIN!",
+                "search_query_1": "smartphone notification news",
+                "search_query_2": "television news studio",
+                "video_query": ""
+            }
+        ]
+    }
+
+
 def generate_script_data():
     used = load_used_topics()
+    live_headlines = fetch_live_world_news_headlines(used)
+    print(f"📡 Fetched {len(live_headlines)} fresh unused global news headlines.")
 
-    # 1. Try live Gemini + Google News RSS generation first
-    ai_script = generate_script_via_gemini(used)
+    # Tier 1: Live Gemini API + RSS Headlines
+    ai_script = generate_script_via_gemini(live_headlines, used)
     if ai_script:
         used.append(ai_script["topic"])
         save_used_topics(used)
         return ai_script
 
-    # 2. Bulletproof fallback to built-in 14-scene (2-minute) Global Current Affairs scripts
-    available = [t for t in FALLBACK_GLOBAL_TOPICS if t["topic"] not in used]
-    if not available:
-        used = []
-        available = FALLBACK_GLOBAL_TOPICS
+    # Tier 2: Free Pollinations OpenAI API + RSS Headlines (Zero API key required)
+    poll_script = generate_script_via_pollinations(live_headlines, used)
+    if poll_script:
+        used.append(poll_script["topic"])
+        save_used_topics(used)
+        return poll_script
 
-    chosen = random.choice(available)
-    used.append(chosen["topic"])
+    # Tier 3: Dynamic Live-Headline Script Builder (Never resets `used` or repeats static topics)
+    dyn_script = build_dynamic_live_news_fallback(live_headlines, used)
+    used.append(dyn_script["topic"])
     save_used_topics(used)
-    print(f"🔥 Building 2-Minute (14-Scene) Global Affairs Script for: {chosen['topic']}")
-    return build_fourteen_scenes_from_template(chosen)
+    return dyn_script
 
 
 def fetch_contextual_stock_video(query, filename):
@@ -556,7 +443,6 @@ def fetch_contextual_stock_video(query, filename):
     if not query:
         return None
 
-    # 1. Official Pixabay Video API
     if PIXABAY_API_KEY:
         try:
             encoded = urllib.parse.quote(query.strip())
@@ -582,7 +468,6 @@ def fetch_contextual_stock_video(query, filename):
         except Exception as e:
             print(f"  [!] Pixabay video skip ({query}): {e}")
 
-    # 2. Mixkit Fallback
     slug = urllib.parse.quote(query.lower().strip())
     search_url = f"https://mixkit.co/free-stock-video/{slug}/"
     try:
@@ -643,7 +528,6 @@ def fetch_exact_scene_photo(query, filename):
         except Exception as e:
             print(f"  [!] Pixabay photo skip ({query}): {e}")
 
-    # 2. Bing HD Search Fallback
     try:
         encoded = urllib.parse.quote(f"{query} realistic photo")
         b_url = f"https://www.bing.com/images/async?q={encoded}&first=1&count=15&adlt=off&qft=+filterui:imagesize-large"
