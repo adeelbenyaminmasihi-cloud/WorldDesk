@@ -621,7 +621,7 @@ async def synthesize_scene_voice(urdu_text, index):
     raw_audio = f"raw_voice_{index}.mp3"
     mastered_audio = f"voice_{index}.m4a"
 
-    communicate = edge_tts.Communicate(urdu_text, voice="ur-PK-AsadNeural", rate="+8%", pitch="-2Hz")
+    communicate = edge_tts.Communicate(urdu_text, voice="ur-PK-UzmaNeural", rate="+0%", pitch="+0Hz")
     await communicate.save(raw_audio)
 
     af_chain = (
