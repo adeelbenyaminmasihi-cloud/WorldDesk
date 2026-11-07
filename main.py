@@ -704,7 +704,9 @@ def prepare_visual_subclip(media_path, is_video, overlay_path, duration, sub_idx
 
 
 def render_two_cut_scene(scene, idx, total_scenes, badge):
-    audio_path = asyncio.run(synthesize_scene_voice(scene["tts_urdu"], idx))
+    # Safe fallback agar ts_urdu key missing ho
+    urdu_text = scene.get("tts_urdu") or scene.get("urdu_text") or "عالمی افیئرز اور دنیا بھر کی تازہ ترین خبروں کا خلاصہ۔"
+    audio_path = asyncio.run(synthesize_scene_voice(urdu_text, idx))
     total_dur = get_audio_duration(audio_path)
     half_dur = round(total_dur / 2.0, 2)
     rem_dur = round(total_dur - half_dur, 2)
